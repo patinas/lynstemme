@@ -1,0 +1,32 @@
+name: Disable public LynStemme
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/disable-public.yml']
+  workflow_dispatch:
+jobs:
+  fail-closed:
+    runs-on: ubuntu-latest
+    permissions: { contents: read }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci --legacy-peer-deps
+      - name: Verify token and resolve authorized account
+        id: cloudflare
+        shell: bash
+        run: |
+          set -euo pipefail
+          verify=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify)
+          test "$(jq -r '.result.status' <<<"$verify")" = active
+          accounts=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" 'https://api.cloudflare.com/client/v4/accounts?per_page=50')
+          test "$(jq '.result | length' <<<"$accounts")" -eq 1
+          echo "account_id=$(jq -r '.result[0].id' <<<"$accounts")" >> "$GITHUB_OUTPUT"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      - name: Remove publicly reachable Worker
+        run: npx wrangler delete --name lynstemme --force
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ steps.cloudflare.outputs.account_id }}
