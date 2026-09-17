@@ -31,7 +31,7 @@ async function openAICompatible(env: Env, transcript: string, context: VoiceTurn
 }
 
 export class LynStemmeAgent extends VoiceAgent<Env> {
-  transcriber = new WorkersAINova3STT(this.env.AI, { language: "da-DK", endpointingMs: 400, keyterms: ["LynStemme", "Nordsvar", "Danmark"] });
+  transcriber = new WorkersAINova3STT(this.env.AI, { language: "da", endpointingMs: 400, keyterms: ["LynStemme", "Nordsvar", "Danmark"] });
   tts = new DanishTTS(this.env.AI);
   async onTurn(transcript: string, context: VoiceTurnContext) {
     const backend = this.env.AI_BACKEND || "auto";
@@ -79,6 +79,7 @@ export default { async fetch(request: Request, env: Env) {
   }
   if (!(await authorized(request, env.APP_PASSWORD))) return loginPage();
   if (url.pathname === "/health") return Response.json({ status: "ok", access: "private", backend: env.AI_BACKEND || (env.GROQ_API_KEY ? "groq" : "workers-ai"), voice: "cloudflare", language: "da-DK", stt: "nova-3", tts: "inworld-tts-2-flash" });
+  if (url.pathname === "/stt-check") { const result = await (env.AI as any).run("@cf/deepgram/nova-3", { encoding: "linear16", sample_rate: "16000", language: "da" }, { websocket: true }) as unknown as { webSocket?: WebSocket }; if (!result.webSocket) return Response.json({ ok: false }, { status: 502 }); result.webSocket.accept(); result.webSocket.close(); return Response.json({ ok: true, model: "nova-3", language: "da", transport: "websocket" }); }
   if (url.pathname.startsWith("/agents/")) return (await routeAgentRequest(request, env)) ?? new Response("Not found", { status: 404 });
   return env.ASSETS ? env.ASSETS.fetch(request) : new Response("Not found", { status: 404 });
 } } satisfies ExportedHandler<Env>;
