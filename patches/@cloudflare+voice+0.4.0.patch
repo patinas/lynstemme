@@ -1,0 +1,14 @@
+diff --git a/node_modules/@cloudflare/voice/dist/voice.js b/node_modules/@cloudflare/voice/dist/voice.js
+index 3554eac..e1b2643 100644
+--- a/node_modules/@cloudflare/voice/dist/voice.js
++++ b/node_modules/@cloudflare/voice/dist/voice.js
+@@ -1356,7 +1356,8 @@ var Nova3Session = class {
+ 				punctuate: String(config.punctuate)
+ 			};
+ 			if (config.keyterms?.length) input.keyterm = config.keyterms;
+-			const resp = await ai.run("@cf/deepgram/nova-3", input, { websocket: true });
++			const response = await ai.run("@cf/deepgram/nova-3", input, { websocket: true });
++			const resp = response instanceof Response ? { webSocket: response.webSocket } : response;
+ 			if (this.#closed) {
+ 				const ws = resp.webSocket;
+ 				if (ws) {

@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "deploy": "npm run build && wrangler deploy",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@ai-sdk/openai": "latest",
@@ -30,6 +31,7 @@
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@vitejs/plugin-react": "latest",
+    "patch-package": "^8.0.1",
     "typescript": "^5.9.2",
     "vite": "latest",
     "vitest": "latest",
