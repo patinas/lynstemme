@@ -10,3 +10,5 @@ Optional realtime conversation layer approved for LynStemme. LiveKit carries Web
 - There is no LiveKit Inference TTS and no paid fallback.
 
 Do not deploy until LiveKit Build status, no-payment-method state, current hard caps, Google billing-disabled state and Gemini quota have been inspected in their owning dashboards.
+
+Live project prepared: `LynStemme Free` (`p_51np7jhs8sb`), EU Frankfurt, observability disabled. Live billing page showed Build and next invoice $0.00 on 2026-09-18.
