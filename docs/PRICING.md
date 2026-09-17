@@ -2,17 +2,17 @@
 
 Checked 17 September 2026. LynStemme is free-first. No paid provider may be enabled without separate owner approval.
 
-## Default browser voice path
+## Default free-first voice path
 
 | Layer | Default | LynStemme usage price |
 | --- | --- | ---: |
-| Danish TTS | Browser/device Web Speech API, natural/neural `da-DK` preferred; generic OS voice is fallback | $0 |
+| Danish TTS | Gemini 2.5 Flash Preview TTS on a separate billing-disabled project, capped locally at 10 calls/day | $0 while the project remains Free Tier |
 | Danish STT | Groq Whisper `whisper-large-v3-turbo`, `language=da` | $0 while inside Groq's free-tier limits |
 | Chat | Groq `openai/gpt-oss-20b` | $0 while inside Groq's free-tier limits |
 | Local fallback | Owner-hosted OpenAI-compatible endpoint | No provider charge; the owner's compute/network may cost money |
 | Edge and state | Cloudflare Workers and Durable Objects | $0 while inside current included allowances |
 
-The browser TTS voice and quality depend on the device. Groq's free tier is rate-limited and its limits can change. It is not an unlimited free service. Workers AI includes 10,000 neurons per day at no charge, but use above the current allocation is billable. Cloudflare Workers and Durable Objects also have plan and usage limits. Check current dashboards and official pricing before scaling.
+Gemini Free Tier data may be used to improve Google products; Andreas explicitly accepted that tradeoff for LynStemme. The gateway refuses TTS if the API key or D1 reservation store is absent, and it has no paid TTS fallback. Groq's free tier is rate-limited and its limits can change. It is not an unlimited free service. Workers AI includes 10,000 neurons per day at no charge, but use above the current allocation is billable. Cloudflare Workers and Durable Objects also have plan and usage limits. Check current dashboards and official pricing before scaling.
 
 The previous paid Inworld TTS path is removed. It returned HTTP 402 without an AI Gateway balance and is not part of the default design.
 

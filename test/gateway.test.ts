@@ -11,7 +11,7 @@ describe("private voice gateway", () => {
   it("retains verified Danish Groq Whisper and free browser TTS contract", () => {
     expect(source).toContain("GroqWhisperSTT");
     expect(source).toContain('fd.append("language", "da")');
-    expect(source).toContain("BrowserTTS");
+    expect(source).toContain("GeminiFreeTTS");
     expect(source).not.toContain("inworld/tts");
   });
   it("only exposes voice and diagnostic handlers", () => {

@@ -15,7 +15,7 @@ Den nuværende stabile version kører på `https://lynstemme.andreas-patinas.wor
 - **LLM:** Groq OpenAI-kompatibelt API, model `openai/gpt-oss-20b`
 - **Fallback:** Workers AI `@cf/meta/llama-3.2-3b-instruct`
 - **Valgfri lokal fallback:** Ollama eller anden netværkstilgængelig OpenAI-kompatibel server
-- **TTS:** browserens indbyggede Web Speech API, som prioriterer en naturlig/neural `da-DK`-stemme (Christel, Jeppe, Sara eller browserens kvalitetsmærkede danske stemme) før generiske lokale stemmer. Ingen betalt Inworld-afhængighed
+- **TTS:** Gemini 2.5 Flash Preview TTS med varm Sulafat-stemme og naturlige danske instruktioner. Et separat billing-deaktiveret projekt og en D1-reservation stopper før den konservative grænse på 10 kald/dag; ingen betalt fallback
 - **Deployment:** GitHub Actions, Wrangler og krypterede repository secrets
 
 ## Privat adgang og sikkerhed
@@ -68,7 +68,7 @@ Standard er `AI_BACKEND=auto`. Vælg `groq`, `workers-ai` eller `local` efter be
 - WebSocket, Durable Object, Groq-secret og modelsvar er verificeret med præcist dansk svar
 - desktop og 390 x 844 mobil er kontrolleret uden vandret overflow
 - talt dansk lyd (5,2 s, syntetiseret) transskriberet korrekt gennem produktionsendpointet `/stt-audio-test`: "Hej, mit navn er Lynstemme. Jeg taler flydende dansk hver eneste dag."
-- Browser-TTS-valget er dækket af tests. Den faktiske stemmekvalitet afhænger af browseren og enhedens installerede danske stemmer
+- Gemini TTS-reservation, dansk prompt, PCM-format og fail-closed-adfærd er dækket af tests. Akustisk kvalitet skal godkendes med rigtig lyd før cutover
 
 Den tilgængelige cloud-testbrowser afviser mikrofontilladelse. Derfor er ægte mikrofonoptagelse fra en browser og barge-in/afbrydelse ikke mærket som bestået. Talt dansk STT er verificeret med reel lydfil gennem produktionen. De kræver en manuel test fra en telefon eller browser med mikrofon tilladt.
 
@@ -78,7 +78,7 @@ Cloudflare understøtter Rust Workers, men deres Voice Agents-SDK og Workers AI 
 
 ## Pris og gratis/betalt grænse
 
-Browserens indbyggede danske TTS har ingen LynStemme-forbrugspris. Browserstemme har ingen telefon- eller operatørudgift. Cloudflare Workers, Durable Objects og Workers AI samt Groq har gratis niveauer, men forbrug over deres aktuelle kvoter er betalt. Se den kildebaserede skalaoversigt i [docs/PRICING.md](docs/PRICING.md). PSTN/SIP-opkald til almindelige telefonnumre er en separat, betalt carrier-integration og er ikke del af denne browseragent.
+Gemini TTS kører kun på et separat billing-deaktiveret Free Tier-projekt og stopper før den lokale 10-kaldsgrænse. Der er ingen telefon- eller operatørudgift. Cloudflare Workers, Durable Objects og Workers AI samt Groq har gratis niveauer, men forbrug over deres aktuelle kvoter er betalt. Se den kildebaserede skalaoversigt i [docs/PRICING.md](docs/PRICING.md). PSTN/SIP-opkald til almindelige telefonnumre er en separat, betalt carrier-integration og er ikke del af denne browseragent.
 
 Ingen skjulte betalte services er nødvendige. Lokal model kan reducere LLM-udgift, men kræver egen drift og en sikker, netværkstilgængelig endpoint.
 
@@ -93,7 +93,8 @@ Ingen skjulte betalte services er nødvendige. Lokal model kan reducere LLM-udgi
 
 - `rust-worker/` - Rust/Wasm edge, privat auth, routing og tests
 - `src/server.ts` - smal TypeScript voice-gateway med Groq Whisper STT og model-routing
-- `src/App.svelte` - Svelte-realtidsinterface og gratis browser-TTS
+- `src/App.svelte` - Svelte-realtidsinterface
+- `src/voice-gateway.ts` - Groq Whisper og hard-capped Gemini Free TTS
 - `src/client.tsx` - voice UI og teksttest
 - `wrangler.jsonc` - bindings, Durable Object, assets og runtime
 - `.github/workflows/deploy.yml` - tests, build, secrets og deploy

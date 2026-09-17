@@ -6,7 +6,7 @@ LynStemme is moving to a Rust-first Cloudflare architecture without taking the p
 
 The `rust-worker/` crate owns the public edge: fail-closed password authentication, signed sessions, security headers, health reporting, backend selection, static assets, and routing. It compiles to WebAssembly with Cloudflare `workers-rs`.
 
-Cloudflare's Voice Agents package and the Workers AI streaming STT handshake currently expose JavaScript/TypeScript APIs that have no equivalent in `workers-rs`. A small TypeScript Worker (`wrangler.voice-gateway.jsonc`, with `workers_dev=false` and no route) therefore remains as a private `VOICE_GATEWAY` service binding for `/agents/*`, `/stt-check`, and the Groq Whisper audio route. It is not an independently public application. The browser UI remains React/TypeScript.
+Cloudflare's Voice Agents package and the Workers AI streaming STT handshake currently expose JavaScript/TypeScript APIs that have no equivalent in `workers-rs`. A small TypeScript Worker (`wrangler.voice-gateway.jsonc`, with `workers_dev=false` and no route) therefore remains as a private `VOICE_GATEWAY` service binding for `/agents/*`, `/stt-check`, and the Groq Whisper audio route. It is not an independently public application. The browser UI is Svelte/TypeScript.
 
 This split keeps the unsupported API at a narrow adapter instead of pretending the whole voice stack can run in Rust today. It also lets the current private app stay available until parity is proven.
 
@@ -24,7 +24,7 @@ Secrets remain Cloudflare secrets and CI secrets. They are never placed in Wrang
 
 ## Free-first voice and model policy
 
-- TTS defaults to the browser/device Web Speech API (`speechSynthesis`). LynStemme prefers known natural/neural `da-DK` voices and quality-marked Danish voices, then an online exact `da-DK` voice, then another Danish voice. If the device exposes no Danish voice, the utterance still requests `da-DK`; quality then depends on the browser and OS. This has no LynStemme usage charge and removes the paid Inworld dependency.
+- TTS uses Gemini 2.5 Flash Preview TTS on a separate billing-disabled Free Tier project. The gateway atomically reserves a D1 usage row before each request and hard-stops at 10 attempts/day. Missing D1/key or a reached cap fails closed; there is no paid fallback. Free Tier data may be used by Google, which Andreas accepted.
 - Danish STT uses Groq Whisper (`whisper-large-v3-turbo`, language `da`) because Cloudflare's streaming Nova-3 endpoint rejected Danish in production tests. Groq's free tier is rate-limited and can change; exhaustion falls back only where the configured local OpenAI-compatible service is reachable.
 - Chat uses Groq first, Workers AI only when its included allocation is available, and a configured local OpenAI-compatible endpoint as the no-provider-cost option. Local compute and network access can still have owner costs.
 - No paid provider may be enabled without separate approval.

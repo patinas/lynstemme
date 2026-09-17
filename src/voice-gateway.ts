@@ -2,18 +2,43 @@ import { Agent, routeAgentRequest, type Connection } from "agents";
 import { withVoice, WorkersAINova3STT, type TTSProvider, type VoiceTurnContext } from "@cloudflare/voice";
 
 type AiResponse = Response | { audio?: string; data?: string };
-type Env = { AI: Ai; ASSETS?: Fetcher; APP_PASSWORD?: string; LynStemmeAgent: DurableObjectNamespace; GROQ_API_KEY?: string; GROQ_CHAT_MODEL?: string; GROQ_STT_MODEL?: string; AI_BACKEND?: "auto" | "groq" | "workers-ai" | "local"; LOCAL_OPENAI_BASE_URL?: string; LOCAL_OPENAI_API_KEY?: string; LOCAL_MODEL?: string; };
-const VoiceAgent = withVoice(Agent);
+type Env = { AI: Ai; TTS_USAGE?: D1Database; GEMINI_API_KEY?: string; ASSETS?: Fetcher; APP_PASSWORD?: string; LynStemmeAgent: DurableObjectNamespace; GROQ_API_KEY?: string; GROQ_CHAT_MODEL?: string; GROQ_STT_MODEL?: string; AI_BACKEND?: "auto" | "groq" | "workers-ai" | "local"; LOCAL_OPENAI_BASE_URL?: string; LOCAL_OPENAI_API_KEY?: string; LOCAL_MODEL?: string; };
+const VoiceAgent = withVoice(Agent, { audioFormat: "pcm16", sampleRate: 24000 });
 const SYSTEM_PROMPT = "Du er LynStemme, en dansk AI-stemmeassistent. Du skal altid svare på naturligt dansk, også når brugeren taler et andet sprog, medmindre brugeren udtrykkeligt beder om en oversættelse. Brug korte sætninger, danske ord og dansk talestil.";
 
 function history(context: VoiceTurnContext, transcript: string) { return [{ role: "system", content: SYSTEM_PROMPT }, ...context.messages.map(({ role, content }) => ({ role, content })), { role: "user", content: transcript }]; }
 function base64Bytes(value: string) { const raw = atob(value); return Uint8Array.from(raw, c => c.charCodeAt(0)).buffer; }
 
-class BrowserTTS implements TTSProvider {
-  async synthesize(): Promise<ArrayBuffer | null> {
-    // Svelte speaks assistant transcript with the device's built-in Danish voice.
-    // Returning null prevents any paid server-side TTS request.
-    return null;
+const GEMINI_TTS_DAILY_CAP = 10; // Intentionally below the owning free-tier quota.
+
+class GeminiFreeTTS implements TTSProvider {
+  constructor(private env: Env) {}
+  async synthesize(text: string, signal?: AbortSignal): Promise<ArrayBuffer | null> {
+    if (!this.env.GEMINI_API_KEY || !this.env.TTS_USAGE) throw new Error("Gratis Gemini TTS er ikke konfigureret");
+    const bucket = new Date().toISOString().slice(0, 10);
+    const id = crypto.randomUUID();
+    await this.env.TTS_USAGE.prepare("CREATE TABLE IF NOT EXISTS tts_free_usage (id TEXT PRIMARY KEY, bucket TEXT NOT NULL, created_at TEXT NOT NULL, status TEXT NOT NULL)").run();
+    const reserved = await this.env.TTS_USAGE.prepare("INSERT INTO tts_free_usage (id,bucket,created_at,status) SELECT ?1,?2,datetime('now'),'reserved' WHERE (SELECT count(*) FROM tts_free_usage WHERE bucket=?2) < ?3").bind(id, bucket, GEMINI_TTS_DAILY_CAP).run();
+    if (!reserved.meta.changes) throw new Error("Den gratis daglige talegrænse er nået");
+    try {
+      const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent", {
+        method: "POST", signal,
+        headers: { "content-type": "application/json", "x-goog-api-key": this.env.GEMINI_API_KEY },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `Læs dette højt på naturligt dansk med varm, rolig og samtalende stemme. Sig kun teksten: ${text}` }] }],
+          generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Sulafat" } } } }
+        })
+      });
+      if (!response.ok) throw new Error(`Gemini gratis TTS fejlede (${response.status})`);
+      const body = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { data?: string; mimeType?: string } }> } }> };
+      const audio = body.candidates?.[0]?.content?.parts?.find(part => part.inlineData?.data)?.inlineData;
+      if (!audio?.data || !audio.mimeType?.includes("rate=24000")) throw new Error("Gemini returnerede ikke 24 kHz PCM-lyd");
+      await this.env.TTS_USAGE.prepare("UPDATE tts_free_usage SET status='completed' WHERE id=?1").bind(id).run();
+      return base64Bytes(audio.data);
+    } catch (error) {
+      await this.env.TTS_USAGE.prepare("UPDATE tts_free_usage SET status='failed' WHERE id=?1").bind(id).run().catch(() => {});
+      throw error;
+    }
   }
 }
 
@@ -47,7 +72,7 @@ async function openAICompatible(env: Env, transcript: string, context: VoiceTurn
 
 export class LynStemmeAgent extends VoiceAgent<Env> {
   transcriber = new GroqWhisperSTT(this.env) as unknown as WorkersAINova3STT;
-  tts = new BrowserTTS();
+  tts = new GeminiFreeTTS(this.env);
   async onTurn(transcript: string, context: VoiceTurnContext) {
     const backend = this.env.AI_BACKEND || "auto";
     if (backend === "local") return openAICompatible(this.env, transcript, context, true);
@@ -55,13 +80,13 @@ export class LynStemmeAgent extends VoiceAgent<Env> {
     const result = await this.env.AI.run("@cf/meta/llama-3.2-3b-instruct", { messages: history(context, transcript), max_tokens: 180 }) as { response?: string };
     return result.response || "Jeg kunne ikke danne et svar.";
   }
-  async onCallStart(_connection: Connection) { /* Greeting is spoken locally by the Svelte client. */ }
+  async onCallStart(connection: Connection) { await this.speak(connection, "Hej, du taler med LynStemme. Hvad kan jeg hjælpe dig med i dag?"); }
 }
 
 
 export default { async fetch(request: Request, env: Env) {
   const url = new URL(request.url);
-  if (url.pathname === "/health") return Response.json({ status: "ok", role: "private-voice-gateway", language: "da-DK", stt: "groq-whisper-large-v3-turbo", tts: "browser-speech-synthesis" });
+  if (url.pathname === "/health") return Response.json({ status: "ok", role: "private-voice-gateway", language: "da-DK", stt: "groq-whisper-large-v3-turbo", tts: "gemini-2.5-flash-preview-tts-free-capped" });
   if (url.pathname === "/stt-audio-test" && request.method === "POST") {
     try { const pcm = await request.arrayBuffer(); const text = await groqTranscribe(env, pcm); return Response.json({ ok: true, provider: "groq-whisper", bytes: pcm.byteLength, transcript: text }); }
     catch (e) { return Response.json({ ok: false, error: String(e).slice(0, 400) }, { status: 502 }); }

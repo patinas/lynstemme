@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { VoiceClient, type TranscriptMessage, type VoiceStatus } from "@cloudflare/voice/client";
-  import { speakDanish } from "./browser-tts";
 
   let client: VoiceClient;
   let status: VoiceStatus = "idle";
@@ -12,8 +11,6 @@
   let error: string | null = null;
   let isMuted = false;
   let text = "";
-  let spokenAssistantMessages = 0;
-  let transcriptInitialized = false;
 
   const active = () => status !== "idle";
   const statusText = () => error || ({ idle: "Klar", listening: "Lytter...", thinking: "Tænker...", speaking: "Taler..." } as Record<string,string>)[status];
@@ -24,25 +21,17 @@
     client = new VoiceClient({ agent: "LynStemmeAgent", name: session });
     const sync = () => {
       status = client.status; transcript = client.transcript; interimTranscript = client.interimTranscript;
-      const assistant = transcript.filter(message => message.role !== "user");
-      if (!transcriptInitialized) {
-        spokenAssistantMessages = assistant.length;
-        transcriptInitialized = true;
-      } else if (assistant.length > spokenAssistantMessages) {
-        assistant.slice(spokenAssistantMessages).forEach(message => speakDanish(message.text));
-        spokenAssistantMessages = assistant.length;
-      }
       audioLevel = client.audioLevel; connected = client.connected; error = client.error; isMuted = client.isMuted;
     };
     const events = ["statuschange", "transcriptchange", "interimtranscript", "audiolevelchange", "connectionchange", "error", "mutechange"] as const;
     events.forEach(event => client.addEventListener(event, sync));
     client.connect(); sync();
-    return () => { events.forEach(event => client.removeEventListener(event, sync)); window.speechSynthesis?.cancel(); client.disconnect(); };
+    return () => { events.forEach(event => client.removeEventListener(event, sync)); client.disconnect(); };
   });
 
   async function toggleCall() {
-    if (active()) { window.speechSynthesis?.cancel(); client.endCall(); }
-    else { await client.startCall(); speakDanish("Hej, du taler med LynStemme. Hvad kan jeg hjælpe dig med i dag?"); }
+    if (active()) client.endCall();
+    else await client.startCall();
   }
   function send() { const value = text.trim(); if (!value) return; client.sendText(value); text = ""; }
 </script>

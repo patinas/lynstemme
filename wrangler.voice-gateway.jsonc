@@ -3,11 +3,41 @@
   "name": "lynstemme-voice-gateway",
   "main": "src/voice-gateway.ts",
   "compatibility_date": "2026-09-17",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "workers_dev": false,
-  "ai": { "binding": "AI", "remote": true },
-  "durable_objects": { "bindings": [{ "class_name": "LynStemmeAgent", "name": "LynStemmeAgent" }] },
-  "migrations": [{ "new_sqlite_classes": ["LynStemmeAgent"], "tag": "v1" }],
-  "vars": { "AI_BACKEND": "auto" },
-  "observability": { "enabled": true }
+  "ai": {
+    "binding": "AI",
+    "remote": true
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "class_name": "LynStemmeAgent",
+        "name": "LynStemmeAgent"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "new_sqlite_classes": [
+        "LynStemmeAgent"
+      ],
+      "tag": "v1"
+    }
+  ],
+  "vars": {
+    "AI_BACKEND": "auto"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "d1_databases": [
+    {
+      "binding": "TTS_USAGE",
+      "database_name": "lynstemme-tts-free-usage",
+      "database_id": "REPLACE_WITH_BILLING_DISABLED_PROJECT_D1_ID"
+    }
+  ]
 }

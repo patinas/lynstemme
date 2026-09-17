@@ -10,7 +10,7 @@ describe("deployment safety", () => {
     const source = fs.readFileSync("src/server.ts", "utf8");
     expect(source).toContain("withVoice");
     expect(source).toContain("GroqWhisperSTT");
-    expect(source).toContain("BrowserTTS");
+    expect(source).toContain("GeminiFreeTTS");
     expect(source).not.toContain("inworld/tts");
     expect(source).toContain("@cf/meta/llama-3.2-3b-instruct");
   });
