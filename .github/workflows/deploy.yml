@@ -29,6 +29,12 @@ jobs:
           echo "account_id=$account_id" >> "$GITHUB_OUTPUT"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      - name: Configure Groq Worker secret
+        run: printf '%s' "$GROQ_API_KEY" | npx wrangler secret put GROQ_API_KEY --config dist/lynstemme/wrangler.json
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ steps.cloudflare.outputs.account_id }}
       - name: Deploy
         run: npx wrangler deploy --config dist/lynstemme/wrangler.json
         env:
