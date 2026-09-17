@@ -40,3 +40,20 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ steps.cloudflare.outputs.account_id }}
+      - name: Restrict production to Andreas with Cloudflare Access
+        shell: bash
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/access/apps"
+          existing=$(curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$api")
+          id=$(jq -r '.result[] | select(any(.destinations[]?; .type == "worker" and .worker_id == "lynstemme")) | .id' <<<"$existing" | head -1)
+          if [ -z "$id" ]; then
+            curl -fsS --request POST "$api" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H 'Content-Type: application/json' \
+              --data '{"type":"self_hosted","name":"LynStemme private test","destinations":[{"type":"worker","worker_id":"lynstemme"}],"session_duration":"24h","policies":[{"name":"Only Andreas","decision":"allow","include":[{"email":{"email":"andreas.patinas@gmail.com"}}]}]}' \
+              | jq -e '.success == true' >/dev/null
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ steps.cloudflare.outputs.account_id }}
