@@ -3,11 +3,22 @@
   "name": "lynstemme-rust",
   "main": "build/worker/shim.mjs",
   "compatibility_date": "2026-09-17",
-  "vars": { "AI_BACKEND": "auto" },
-  "build": { "command": "cargo install -q worker-build && worker-build --release" },
+  "vars": {
+    "AI_BACKEND": "auto"
+  },
   "services": [
-    { "binding": "VOICE_GATEWAY", "service": "lynstemme-voice-gateway" }
+    {
+      "binding": "VOICE_GATEWAY",
+      "service": "lynstemme-voice-gateway"
+    }
   ],
-  "assets": { "binding": "ASSETS", "directory": "../dist/client", "not_found_handling": "single-page-application", "run_worker_first": true },
-  "observability": { "enabled": true }
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "../dist/client",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true
+  },
+  "observability": {
+    "enabled": true
+  }
 }
