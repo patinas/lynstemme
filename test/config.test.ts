@@ -9,8 +9,8 @@ describe("deployment safety", () => {
   it("uses the official Cloudflare voice pipeline and fallback", () => {
     const source = fs.readFileSync("src/server.ts", "utf8");
     expect(source).toContain("withVoice");
-    expect(source).toContain("WorkersAIFluxSTT");
-    expect(source).toContain("WorkersAITTS");
+    expect(source).toContain("WorkersAINova3STT");
+    expect(source).toContain("DanishTTS");
     expect(source).toContain("@cf/meta/llama-3.2-3b-instruct");
   });
 });
