@@ -28,3 +28,11 @@ Secrets remain Cloudflare secrets and CI secrets. They are never placed in Wrang
 - Danish STT uses Groq Whisper (`whisper-large-v3-turbo`, language `da`) because Cloudflare's streaming Nova-3 endpoint rejected Danish in production tests. Groq's free tier is rate-limited and can change; exhaustion falls back only where the configured local OpenAI-compatible service is reachable.
 - Chat uses Groq first, Workers AI only when its included allocation is available, and a configured local OpenAI-compatible endpoint as the no-provider-cost option. Local compute and network access can still have owner costs.
 - No paid provider may be enabled without separate approval.
+
+## LiveKit realtime layer
+
+The approved target uses LiveKit Cloud Build for WebRTC media, turn detection, and adaptive interruption. `livekit-agent/` is a Node agent process on LiveKit Cloud; it is deliberately separate from Cloudflare Workers. Svelte connects with LiveKit's web SDK through a signed-token endpoint owned by the private Rust Worker. Groq continues to provide Danish Whisper STT and chat, and the separate billing-disabled Gemini project continues to provide Danish TTS.
+
+LiveKit does not replace Danish TTS. No LiveKit Inference TTS or paid fallback is configured. The Build project must have no payment method, and its live dashboard must show the free hard-cap plan before deployment. Current published Build allowances are 1,000 agent-session minutes, 5,000 WebRTC participant minutes, and $2.50 inference credit; LynStemme does not consume the inference credit for TTS. Build cold starts may take 10-20 seconds and are a production test gate.
+
+The LiveKit agent calls `/internal/tts/reserve` before passing each segment to Gemini. The private gateway atomically consumes the same 10-attempt UTC-day D1 ledger. Missing secrets, unavailable D1, rejection, or exhaustion prevents the Gemini call.

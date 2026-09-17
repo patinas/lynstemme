@@ -104,6 +104,12 @@ pub async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     if path == "/login" && req.method() == Method::Post {
         return handle_login(req, &secret).await;
     }
+    // LiveKit Cloud cannot hold Andreas' browser cookie. The reservation route
+    // is externally reachable but owns a separate bearer secret and is also
+    // validated by the private TypeScript gateway before touching D1.
+    if path == "/internal/tts/reserve" {
+        return env.service("VOICE_GATEWAY")?.fetch_request(req).await;
+    }
     if !is_authorized(&req, &secret) {
         return login_page(false);
     }
@@ -114,7 +120,7 @@ pub async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
             &json!({"status":"ok","access":"private","runtime":"rust-wasm","backend":backend(configured.as_deref(),has_groq),"voice_gateway":"typescript-service-binding","language":"da-DK"}),
         );
     }
-    if path.starts_with("/agents/") || path == "/stt-check" || path == "/stt-audio-test" {
+    if path.starts_with("/agents/") || path == "/stt-check" || path == "/stt-audio-test" || path == "/livekit/token" {
         return env.service("VOICE_GATEWAY")?.fetch_request(req).await;
     }
     env.assets("ASSETS")?.fetch_request(req).await

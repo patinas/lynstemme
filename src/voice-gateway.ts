@@ -1,8 +1,11 @@
 import { Agent, routeAgentRequest, type Connection } from "agents";
 import { withVoice, WorkersAINova3STT, type TTSProvider, type VoiceTurnContext } from "@cloudflare/voice";
+import { AccessToken, RoomAgentDispatch, RoomConfiguration } from "livekit-server-sdk";
 
 type AiResponse = Response | { audio?: string; data?: string };
-type Env = { AI: Ai; TTS_USAGE?: D1Database; GEMINI_API_KEY?: string; ASSETS?: Fetcher; APP_PASSWORD?: string; LynStemmeAgent: DurableObjectNamespace; GROQ_API_KEY?: string; GROQ_CHAT_MODEL?: string; GROQ_STT_MODEL?: string; AI_BACKEND?: "auto" | "groq" | "workers-ai" | "local"; LOCAL_OPENAI_BASE_URL?: string; LOCAL_OPENAI_API_KEY?: string; LOCAL_MODEL?: string; };
+const textEncoder = new TextEncoder();
+function secretEqual(a: string, b: string) { const aa=textEncoder.encode(a), bb=textEncoder.encode(b); if(aa.length!==bb.length) return false; let d=0; for(let i=0;i<aa.length;i++) d |= aa[i]^bb[i]; return d===0; }
+type Env = { AI: Ai; TTS_USAGE?: D1Database; GEMINI_API_KEY?: string; TTS_RESERVATION_SECRET?: string; LIVEKIT_URL?: string; LIVEKIT_API_KEY?: string; LIVEKIT_API_SECRET?: string; ASSETS?: Fetcher; APP_PASSWORD?: string; LynStemmeAgent: DurableObjectNamespace; GROQ_API_KEY?: string; GROQ_CHAT_MODEL?: string; GROQ_STT_MODEL?: string; AI_BACKEND?: "auto" | "groq" | "workers-ai" | "local"; LOCAL_OPENAI_BASE_URL?: string; LOCAL_OPENAI_API_KEY?: string; LOCAL_MODEL?: string; };
 const VoiceAgent = withVoice(Agent, { audioFormat: "pcm16", sampleRate: 24000 });
 const SYSTEM_PROMPT = "Du er LynStemme, en dansk AI-stemmeassistent. Du skal altid svare på naturligt dansk, også når brugeren taler et andet sprog, medmindre brugeren udtrykkeligt beder om en oversættelse. Brug korte sætninger, danske ord og dansk talestil.";
 
@@ -84,8 +87,33 @@ export class LynStemmeAgent extends VoiceAgent<Env> {
 }
 
 
+async function reserveTts(env: Env) {
+  if (!env.TTS_USAGE) throw new Error("Gratis Gemini TTS ledger mangler");
+  const bucket = new Date().toISOString().slice(0, 10);
+  const id = crypto.randomUUID();
+  await env.TTS_USAGE.prepare("CREATE TABLE IF NOT EXISTS tts_free_usage (id TEXT PRIMARY KEY, bucket TEXT NOT NULL, created_at TEXT NOT NULL, status TEXT NOT NULL)").run();
+  const reserved = await env.TTS_USAGE.prepare("INSERT INTO tts_free_usage (id,bucket,created_at,status) SELECT ?1,?2,datetime('now'),'reserved-livekit' WHERE (SELECT count(*) FROM tts_free_usage WHERE bucket=?2) < ?3").bind(id, bucket, GEMINI_TTS_DAILY_CAP).run();
+  if (!reserved.meta.changes) throw new Error("Den gratis daglige talegrænse er nået");
+  return id;
+}
+
 export default { async fetch(request: Request, env: Env) {
   const url = new URL(request.url);
+  if (url.pathname === "/livekit/token" && request.method === "POST") {
+    if (!env.LIVEKIT_URL || !env.LIVEKIT_API_KEY || !env.LIVEKIT_API_SECRET) return Response.json({ error: "LiveKit Free is not configured" }, { status: 503 });
+    const identity = `andreas-${crypto.randomUUID()}`;
+    const roomName = `lynstemme-${crypto.randomUUID()}`;
+    const access = new AccessToken(env.LIVEKIT_API_KEY, env.LIVEKIT_API_SECRET, { identity, ttl: "10m" });
+    access.addGrant({ room: roomName, roomJoin: true, canPublish: true, canSubscribe: true, canPublishData: true });
+    access.roomConfig = new RoomConfiguration({ agents: [new RoomAgentDispatch({ agentName: "lynstemme" })] });
+    return Response.json({ server_url: env.LIVEKIT_URL, participant_token: await access.toJwt() }, { headers: { "cache-control": "no-store" } });
+  }
+  if (url.pathname === "/internal/tts/reserve" && request.method === "POST") {
+    const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+    if (!env.TTS_RESERVATION_SECRET || !token || !secretEqual(token, env.TTS_RESERVATION_SECRET)) return new Response("Forbidden", { status: 403 });
+    try { const id = await reserveTts(env); return Response.json({ reserved: true, id }); }
+    catch (e) { return Response.json({ reserved: false, error: String(e).slice(0, 300) }, { status: 429 }); }
+  }
   if (url.pathname === "/health") return Response.json({ status: "ok", role: "private-voice-gateway", language: "da-DK", stt: "groq-whisper-large-v3-turbo", tts: "gemini-2.5-flash-preview-tts-free-capped" });
   if (url.pathname === "/stt-audio-test" && request.method === "POST") {
     try { const pcm = await request.arrayBuffer(); const text = await groqTranscribe(env, pcm); return Response.json({ ok: true, provider: "groq-whisper", bytes: pcm.byteLength, transcript: text }); }

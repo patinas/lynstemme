@@ -19,6 +19,8 @@
     "@modelcontextprotocol/server": "^2.0.0",
     "agents": "^0.22.0",
     "ai": "latest",
+    "livekit-client": "^2.22.3",
+    "livekit-server-sdk": "^2.19.0",
     "svelte": "^5.46.4",
     "workers-ai-provider": "^4.0.0",
     "zod": "^4.6.5"
