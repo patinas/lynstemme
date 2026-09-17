@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
-
 describe("deployment safety", () => {
   it("keeps secrets out of tracked config", () => {
     const config = fs.readFileSync("wrangler.jsonc", "utf8");
@@ -12,6 +11,6 @@ describe("deployment safety", () => {
     expect(source).toContain("withVoice");
     expect(source).toContain("WorkersAIFluxSTT");
     expect(source).toContain("WorkersAITTS");
-    expect(source).toContain("@cf/meta/llama-3.1-8b-instruct");
+    expect(source).toContain("@cf/meta/llama-3.2-3b-instruct");
   });
 });
