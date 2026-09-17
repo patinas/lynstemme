@@ -11,11 +11,11 @@ LynStemme er opdateret til Cloudflares aktuelle Voice Agents-arkitektur og køre
 - **UI:** React + `@cloudflare/voice/react`
 - **Runtime:** Cloudflare Worker + Agents SDK + SQLite Durable Object
 - **Transport:** WebSocket via `/agents/*`
-- **STT:** Workers AI Nova-3 med `da-DK`, 400 ms endpointing og danske nøgleord
+- **STT:** Groq Whisper `whisper-large-v3-turbo` med `language=da` (Cloudflare Nova-3 streaming afviser dansk, verificeret mod live runtime 2026-09-17). Energi-baseret VAD udløser barge-in og utterance-grænser
 - **LLM:** Groq OpenAI-kompatibelt API, model `openai/gpt-oss-20b`
 - **Fallback:** Workers AI `@cf/meta/llama-3.2-3b-instruct`
 - **Valgfri lokal fallback:** Ollama eller anden netværkstilgængelig OpenAI-kompatibel server
-- **TTS:** Cloudflare Workers AI, `inworld/tts-2-flash`, dansk `da-DK`, stemmen Sophie
+- **TTS:** Cloudflare Workers AI `inworld/tts-2`, dansk stemme. Bemærk: kræver penge på AI Gateway-balancen eller BYOK - returnerer pt. 402 insufficient balance, så taleoutput afventer ejerens beslutning
 - **Deployment:** GitHub Actions, Wrangler og krypterede repository secrets
 
 ## Privat adgang og sikkerhed
@@ -66,11 +66,11 @@ Standard er `AI_BACKEND=auto`. Vælg `groq`, `workers-ai` eller `local` efter be
 - anonym `/` returnerer 403
 - ejerlogin åbner den rigtige app
 - WebSocket, Durable Object, Groq-secret og modelsvar er verificeret med præcist dansk svar
-- health-metadata: `da-DK`, Nova-3 og Inworld TTS
 - desktop og 390 x 844 mobil er kontrolleret uden vandret overflow
-- TTS-pipelinen returnerede en færdig velkomstturn
+- talt dansk lyd (5,2 s, syntetiseret) transskriberet korrekt gennem produktionsendpointet `/stt-audio-test`: "Hej, mit navn er Lynstemme. Jeg taler flydende dansk hver eneste dag."
+- TTS er IKKE verificeret: Inworld via AI Gateway svarer 402 insufficient balance
 
-Den tilgængelige cloud-testbrowser afviser mikrofontilladelse. Derfor er ægte mikrofonoptagelse, talt dansk STT og barge-in/afbrydelse ikke mærket som bestået. De kræver en manuel test fra en telefon eller browser med mikrofon tilladt.
+Den tilgængelige cloud-testbrowser afviser mikrofontilladelse. Derfor er ægte mikrofonoptagelse fra en browser og barge-in/afbrydelse ikke mærket som bestået. Talt dansk STT er verificeret med reel lydfil gennem produktionen. De kræver en manuel test fra en telefon eller browser med mikrofon tilladt.
 
 ## Pris og gratis/betalt grænse
 
