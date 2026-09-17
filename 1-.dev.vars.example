@@ -1,0 +1,9 @@
+# Copy to .dev.vars. Never commit .dev.vars.
+GROQ_API_KEY=
+GROQ_CHAT_MODEL=openai/gpt-oss-20b
+AI_BACKEND=auto
+# Optional: a network-reachable OpenAI-compatible self-hosted endpoint.
+# AI_BACKEND=local
+# LOCAL_OPENAI_BASE_URL=https://your-private-gateway.example/v1
+# LOCAL_OPENAI_API_KEY=
+# LOCAL_MODEL=llama3.2:3b
