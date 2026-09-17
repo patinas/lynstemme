@@ -1,0 +1,14 @@
+const base = process.env.LYNSTEMME_RUST_URL;
+if (!base) throw new Error("Set LYNSTEMME_RUST_URL to a local or preview Rust Worker URL");
+const password = process.env.APP_PASSWORD;
+if (!password) throw new Error("Set APP_PASSWORD outside Git");
+const anonymous = await fetch(`${base}/health`, {redirect: "manual"});
+if (anonymous.status !== 403) throw new Error(`anonymous /health: expected 403, got ${anonymous.status}`);
+const login = await fetch(`${base}/login`, {method:"POST", body:new URLSearchParams({password}), redirect:"manual"});
+if (login.status !== 303) throw new Error(`login: expected 303, got ${login.status}`);
+const cookie = login.headers.get("set-cookie")?.split(";",1)[0];
+if (!cookie) throw new Error("login did not set a session cookie");
+const health = await fetch(`${base}/health`, {headers:{cookie}});
+const body = await health.json();
+if (!health.ok || body.runtime !== "rust-wasm" || body.access !== "private") throw new Error(`bad health: ${JSON.stringify(body)}`);
+console.log(JSON.stringify({anonymous: anonymous.status, login: login.status, health: body}, null, 2));

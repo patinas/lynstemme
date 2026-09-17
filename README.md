@@ -4,18 +4,18 @@
 
 ## Status
 
-LynStemme er opdateret til Cloudflares aktuelle Voice Agents-arkitektur og kører på `https://lynstemme.andreas-patinas.workers.dev`. Produktionen er privat: anonyme forespørgsler får HTTP 403 og kun login-siden. Alle app-, health-, asset- og WebSocket-ruter kræver en gyldig, signeret session.
+Den nuværende stabile version kører på `https://lynstemme.andreas-patinas.workers.dev`. Produktionen er privat: anonyme forespørgsler får HTTP 403 og kun login-siden. Alle app-, health-, asset- og WebSocket-ruter kræver en gyldig, signeret session.
 
 ## Arkitektur
 
-- **UI:** React + `@cloudflare/voice/react`
+- **UI:** Svelte 5 + den framework-uafhængige `@cloudflare/voice/client`
 - **Runtime:** Cloudflare Worker + Agents SDK + SQLite Durable Object
 - **Transport:** WebSocket via `/agents/*`
 - **STT:** Groq Whisper `whisper-large-v3-turbo` med `language=da` (Cloudflare Nova-3 streaming afviser dansk, verificeret mod live runtime 2026-09-17). Energi-baseret VAD udløser barge-in og utterance-grænser
 - **LLM:** Groq OpenAI-kompatibelt API, model `openai/gpt-oss-20b`
 - **Fallback:** Workers AI `@cf/meta/llama-3.2-3b-instruct`
 - **Valgfri lokal fallback:** Ollama eller anden netværkstilgængelig OpenAI-kompatibel server
-- **TTS:** Cloudflare Workers AI `inworld/tts-2`, dansk stemme. Bemærk: kræver penge på AI Gateway-balancen eller BYOK - returnerer pt. 402 insufficient balance, så taleoutput afventer ejerens beslutning
+- **TTS:** browserens indbyggede Web Speech API, som vælger lokal `da-DK` først og derefter en anden dansk stemme. Ingen betalt Inworld-afhængighed
 - **Deployment:** GitHub Actions, Wrangler og krypterede repository secrets
 
 ## Privat adgang og sikkerhed
@@ -68,13 +68,17 @@ Standard er `AI_BACKEND=auto`. Vælg `groq`, `workers-ai` eller `local` efter be
 - WebSocket, Durable Object, Groq-secret og modelsvar er verificeret med præcist dansk svar
 - desktop og 390 x 844 mobil er kontrolleret uden vandret overflow
 - talt dansk lyd (5,2 s, syntetiseret) transskriberet korrekt gennem produktionsendpointet `/stt-audio-test`: "Hej, mit navn er Lynstemme. Jeg taler flydende dansk hver eneste dag."
-- TTS er IKKE verificeret: Inworld via AI Gateway svarer 402 insufficient balance
+- Browser-TTS-valget er dækket af tests. Den faktiske stemmekvalitet afhænger af browseren og enhedens installerede danske stemmer
 
 Den tilgængelige cloud-testbrowser afviser mikrofontilladelse. Derfor er ægte mikrofonoptagelse fra en browser og barge-in/afbrydelse ikke mærket som bestået. Talt dansk STT er verificeret med reel lydfil gennem produktionen. De kræver en manuel test fra en telefon eller browser med mikrofon tilladt.
 
+## Rust-first migration
+
+Cloudflare understøtter Rust Workers, men deres Voice Agents-SDK og Workers AI streaming-STT-handshake findes endnu ikke i `workers-rs`. Derfor flyttes edge, login, sessions, sikkerhed og routing til Rust/Wasm, mens den mindst mulige TypeScript-gateway beholder Voice Agent/Durable Object-integrationen. Svelte erstatter React. Den eksisterende private produktion bliver stående, indtil Rust/Svelte-versionen har bestået de samme live tests. Se [docs/RUST_MIGRATION.md](docs/RUST_MIGRATION.md).
+
 ## Pris og gratis/betalt grænse
 
-Browserstemme har ingen telefon- eller operatørudgift. Cloudflare Workers, Durable Objects og Workers AI samt Groq har gratis niveauer, men forbrug over deres aktuelle kvoter er betalt. Se den kildebaserede skalaoversigt i [docs/PRICING.md](docs/PRICING.md). PSTN/SIP-opkald til almindelige telefonnumre er en separat, betalt carrier-integration og er ikke del af denne browseragent.
+Browserens indbyggede danske TTS har ingen LynStemme-forbrugspris. Browserstemme har ingen telefon- eller operatørudgift. Cloudflare Workers, Durable Objects og Workers AI samt Groq har gratis niveauer, men forbrug over deres aktuelle kvoter er betalt. Se den kildebaserede skalaoversigt i [docs/PRICING.md](docs/PRICING.md). PSTN/SIP-opkald til almindelige telefonnumre er en separat, betalt carrier-integration og er ikke del af denne browseragent.
 
 Ingen skjulte betalte services er nødvendige. Lokal model kan reducere LLM-udgift, men kræver egen drift og en sikker, netværkstilgængelig endpoint.
 
@@ -87,7 +91,9 @@ Ingen skjulte betalte services er nødvendige. Lokal model kan reducere LLM-udgi
 
 ## Filer
 
-- `src/server.ts` - voice agent, dansk STT/LLM/TTS og privat auth
+- `rust-worker/` - Rust/Wasm edge, privat auth, routing og tests
+- `src/server.ts` - smal TypeScript voice-gateway med Groq Whisper STT og model-routing
+- `src/App.svelte` - Svelte-realtidsinterface og gratis browser-TTS
 - `src/client.tsx` - voice UI og teksttest
 - `wrangler.jsonc` - bindings, Durable Object, assets og runtime
 - `.github/workflows/deploy.yml` - tests, build, secrets og deploy

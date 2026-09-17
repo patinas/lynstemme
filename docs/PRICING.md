@@ -1,42 +1,31 @@
-# Scale pricing
+# Pricing and free-tier boundary
 
-Prices checked 17 September 2026. USD, excluding tax. This estimate covers browser voice, not ordinary phone calls.
+Checked 17 September 2026. LynStemme is free-first. No paid provider may be enabled without separate owner approval.
 
-## Assumptions per conversation minute
+## Default browser voice path
 
-- the user speaks 30 seconds
-- the assistant speaks 30 seconds, about 750 characters
-- Groq receives 250 input tokens and returns 75 output tokens
+| Layer | Default | LynStemme usage price |
+| --- | --- | ---: |
+| Danish TTS | Browser/device Web Speech API, local `da-DK` preferred | $0 |
+| Danish STT | Groq Whisper `whisper-large-v3-turbo`, `language=da` | $0 while inside Groq's free-tier limits |
+| Chat | Groq `openai/gpt-oss-20b` | $0 while inside Groq's free-tier limits |
+| Local fallback | Owner-hosted OpenAI-compatible endpoint | No provider charge; the owner's compute/network may cost money |
+| Edge and state | Cloudflare Workers and Durable Objects | $0 while inside current included allowances |
 
-| Layer | Current unit price | Estimated cost per conversation minute |
-| --- | ---: | ---: |
-| Cloudflare Flux STT | $0.0077/audio minute | $0.00385 |
-| Cloudflare Aura-1 TTS | $0.015/1,000 characters | $0.01125 |
-| Groq GPT-OSS 20B | $0.075/M input, $0.30/M output tokens | $0.000041 |
-| **AI total** | | **$0.01514** |
+The browser TTS voice and quality depend on the device. Groq's free tier is rate-limited and its limits can change. It is not an unlimited free service. Workers AI includes 10,000 neurons per day at no charge, but use above the current allocation is billable. Cloudflare Workers and Durable Objects also have plan and usage limits. Check current dashboards and official pricing before scaling.
 
-A five-minute conversation is about $0.0757 in AI usage under these assumptions.
+The previous paid Inworld TTS path is removed. It returned HTTP 402 without an AI Gateway balance and is not part of the default design.
 
-| Monthly conversation minutes | Estimated AI usage |
-| ---: | ---: |
-| 1,000 | $15.14 |
-| 10,000 | $151.41 |
-| 100,000 | $1,514.06 |
+## If free quotas are exhausted
 
-Cloudflare Workers Paid starts at $5/month. After included usage, Workers requests are $0.30/M, Durable Object requests $0.15/M, and Durable Object duration $12.50/M GB-s. Egress has no separate charge. Actual platform cost depends on connection duration, memory, request volume and stored history.
-
-Workers AI includes 10,000 neurons/day at no charge. It is useful for prototypes, not a promise that sustained voice traffic is free. Groq's free tier is also rate-limited.
-
-## Optional phone calls
-
-Browser voice has no carrier charge. Calling ordinary Danish numbers adds a SIP/PSTN provider. Twilio currently lists $0.024/min to Danish landlines and $0.0564/min to mobiles, before number rental and optional features.
+LynStemme should fail clearly or use a configured local OpenAI-compatible service. It must not silently turn on billable AI or telephony. Calling ordinary Danish phone numbers remains a separate SIP/PSTN product and requires separate approval.
 
 ## Sources
 
-- https://developers.cloudflare.com/workers-ai/models/flux/
-- https://developers.cloudflare.com/workers-ai/models/aura-1/
+- https://console.groq.com/docs/rate-limits
 - https://console.groq.com/docs/model/openai/gpt-oss-20b.md
+- https://console.groq.com/docs/speech-to-text
 - https://developers.cloudflare.com/workers/platform/pricing/
 - https://developers.cloudflare.com/durable-objects/platform/pricing/
 - https://developers.cloudflare.com/workers-ai/platform/pricing/
-- https://www.twilio.com/en-us/voice/pricing/dk
+- https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API

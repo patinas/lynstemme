@@ -58,44 +58,14 @@ export class LynStemmeAgent extends VoiceAgent<Env> {
   async onCallStart(_connection: Connection) { /* Greeting is spoken locally by the Svelte client. */ }
 }
 
-const encoder = new TextEncoder();
-function secureEqual(a: string, b: string) {
-  const aa = encoder.encode(a), bb = encoder.encode(b);
-  if (aa.length !== bb.length) return false;
-  let mismatch = 0;
-  for (let i = 0; i < aa.length; i++) mismatch |= aa[i] ^ bb[i];
-  return mismatch === 0;
-}
-async function signature(secret: string, value: string) {
-  const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const bytes = new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(value)));
-  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-async function authorized(request: Request, secret: string) {
-  const cookie = request.headers.get("cookie")?.match(/(?:^|;\s*)lynstemme_session=([^;]+)/)?.[1];
-  if (!cookie) return false;
-  const [expiry, sig] = cookie.split(".");
-  if (!expiry || !sig || Number(expiry) < Date.now()) return false;
-  return secureEqual(sig, await signature(secret, expiry));
-}
-function loginPage(error = false) {
-  return new Response(`<!doctype html><html lang="da"><meta name="viewport" content="width=device-width"><title>Privat LynStemme</title><style>body{font:18px system-ui;background:#07111f;color:#fff;display:grid;place-items:center;min-height:100vh;margin:0}form{width:min(90vw,360px);padding:2rem;background:#10213a;border-radius:18px}input,button{box-sizing:border-box;width:100%;padding:.9rem;margin-top:1rem;border-radius:10px;border:1px solid #547;background:#fff;color:#111}button{background:#42d3a2;border:0;font-weight:700}p{color:#ff9d9d}</style><form method="post" action="/login"><h1>LynStemme</h1><div>Privat test for Andreas</div>${error ? "<p>Forkert adgangskode.</p>" : ""}<input type="password" name="password" autocomplete="current-password" aria-label="Adgangskode" required autofocus><button>Log ind</button></form></html>`, { status: error ? 401 : 403, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow" } });
-}
 
 export default { async fetch(request: Request, env: Env) {
-  if (!env.APP_PASSWORD) return new Response("Private deployment is not configured", { status: 503 });
   const url = new URL(request.url);
-  if (url.pathname === "/login" && request.method === "POST") {
-    const supplied = String((await request.formData()).get("password") || "");
-    if (!secureEqual(supplied, env.APP_PASSWORD)) return loginPage(true);
-    const expiry = String(Date.now() + 24 * 60 * 60 * 1000);
-    const sig = await signature(env.APP_PASSWORD, expiry);
-    return new Response(null, { status: 303, headers: { location: "/", "set-cookie": `lynstemme_session=${expiry}.${sig}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=86400`, "cache-control": "no-store" } });
+  if (url.pathname === "/health") return Response.json({ status: "ok", role: "private-voice-gateway", language: "da-DK", stt: "groq-whisper-large-v3-turbo", tts: "browser-speech-synthesis" });
+  if (url.pathname === "/stt-audio-test" && request.method === "POST") {
+    try { const pcm = await request.arrayBuffer(); const text = await groqTranscribe(env, pcm); return Response.json({ ok: true, provider: "groq-whisper", bytes: pcm.byteLength, transcript: text }); }
+    catch (e) { return Response.json({ ok: false, error: String(e).slice(0, 400) }, { status: 502 }); }
   }
-  if (!(await authorized(request, env.APP_PASSWORD))) return loginPage();
-  if (url.pathname === "/health") return Response.json({ status: "ok", access: "private", backend: env.AI_BACKEND || (env.GROQ_API_KEY ? "groq" : "workers-ai"), voice: "cloudflare", language: "da-DK", stt: "groq-whisper-large-v3-turbo", tts: "browser-speech-synthesis" });
-  if (url.pathname === "/stt-check") { let input; try { const qp = url.searchParams.get("p"); input = qp ? JSON.parse(qp) : {}; } catch (e) { return Response.json({ ok: false, parse: String(e) }, { status: 400 }); } const response = await (env.AI as any).run("@cf/deepgram/nova-3", input, { websocket: true }) as Response; const ws = response.webSocket; if (!ws) { const body = await response.text().catch(() => ""); return Response.json({ ok: false, status: response.status, error: body.slice(0, 500) }, { status: 502 }); } ws.accept(); ws.close(); return Response.json({ ok: true, model: "nova-3", input, transport: "websocket" }); }
-  if (url.pathname === "/stt-audio-test" && request.method === "POST") { try { const pcm = await request.arrayBuffer(); const text = await groqTranscribe(env, pcm); return Response.json({ ok: true, provider: "groq-whisper", bytes: pcm.byteLength, transcript: text }); } catch (e) { return Response.json({ ok: false, error: String(e).slice(0, 400) }, { status: 502 }); } }
   if (url.pathname.startsWith("/agents/")) return (await routeAgentRequest(request, env)) ?? new Response("Not found", { status: 404 });
-  return env.ASSETS ? env.ASSETS.fetch(request) : new Response("Not found", { status: 404 });
+  return new Response("Not found", { status: 404 });
 } } satisfies ExportedHandler<Env>;

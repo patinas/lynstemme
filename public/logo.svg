@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+<title id="title">LynStemme logo</title><desc id="desc">Et turkis lyn formet som en dansk lydbølge</desc>
+<defs><linearGradient id="g" x1="96" y1="64" x2="416" y2="448" gradientUnits="userSpaceOnUse"><stop stop-color="#61F4C4"/><stop offset="1" stop-color="#27A8FF"/></linearGradient></defs>
+<path fill="url(#g)" d="M285 34 111 279h108l-30 199 212-281H284z"/>
+<path fill="#07111F" fill-rule="evenodd" d="M226 184c12 0 22 10 22 22v100a22 22 0 0 1-44 0V206c0-12 10-22 22-22Zm60-35c12 0 22 10 22 22v170a22 22 0 0 1-44 0V171c0-12 10-22 22-22Zm60 74c12 0 22 10 22 22v22a22 22 0 0 1-44 0v-22c0-12 10-22 22-22Z"/>
+</svg>
