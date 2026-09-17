@@ -6,7 +6,7 @@ Checked 17 September 2026. LynStemme is free-first. No paid provider may be enab
 
 | Layer | Default | LynStemme usage price |
 | --- | --- | ---: |
-| Danish TTS | Browser/device Web Speech API, local `da-DK` preferred | $0 |
+| Danish TTS | Browser/device Web Speech API, natural/neural `da-DK` preferred; generic OS voice is fallback | $0 |
 | Danish STT | Groq Whisper `whisper-large-v3-turbo`, `language=da` | $0 while inside Groq's free-tier limits |
 | Chat | Groq `openai/gpt-oss-20b` | $0 while inside Groq's free-tier limits |
 | Local fallback | Owner-hosted OpenAI-compatible endpoint | No provider charge; the owner's compute/network may cost money |

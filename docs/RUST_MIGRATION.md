@@ -24,7 +24,7 @@ Secrets remain Cloudflare secrets and CI secrets. They are never placed in Wrang
 
 ## Free-first voice and model policy
 
-- TTS defaults to the browser/device Web Speech API (`speechSynthesis`). LynStemme selects a local exact `da-DK` voice first, then another `da-DK` voice, then another Danish `da-*` voice. If the device exposes no Danish voice, the utterance still requests `da-DK`; quality then depends on the browser and OS. This has no LynStemme usage charge and removes the paid Inworld dependency.
+- TTS defaults to the browser/device Web Speech API (`speechSynthesis`). LynStemme prefers known natural/neural `da-DK` voices and quality-marked Danish voices, then an online exact `da-DK` voice, then another Danish voice. If the device exposes no Danish voice, the utterance still requests `da-DK`; quality then depends on the browser and OS. This has no LynStemme usage charge and removes the paid Inworld dependency.
 - Danish STT uses Groq Whisper (`whisper-large-v3-turbo`, language `da`) because Cloudflare's streaming Nova-3 endpoint rejected Danish in production tests. Groq's free tier is rate-limited and can change; exhaustion falls back only where the configured local OpenAI-compatible service is reachable.
 - Chat uses Groq first, Workers AI only when its included allocation is available, and a configured local OpenAI-compatible endpoint as the no-provider-cost option. Local compute and network access can still have owner costs.
 - No paid provider may be enabled without separate approval.

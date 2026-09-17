@@ -15,7 +15,7 @@ Den nuværende stabile version kører på `https://lynstemme.andreas-patinas.wor
 - **LLM:** Groq OpenAI-kompatibelt API, model `openai/gpt-oss-20b`
 - **Fallback:** Workers AI `@cf/meta/llama-3.2-3b-instruct`
 - **Valgfri lokal fallback:** Ollama eller anden netværkstilgængelig OpenAI-kompatibel server
-- **TTS:** browserens indbyggede Web Speech API, som vælger lokal `da-DK` først og derefter en anden dansk stemme. Ingen betalt Inworld-afhængighed
+- **TTS:** browserens indbyggede Web Speech API, som prioriterer en naturlig/neural `da-DK`-stemme (Christel, Jeppe, Sara eller browserens kvalitetsmærkede danske stemme) før generiske lokale stemmer. Ingen betalt Inworld-afhængighed
 - **Deployment:** GitHub Actions, Wrangler og krypterede repository secrets
 
 ## Privat adgang og sikkerhed
