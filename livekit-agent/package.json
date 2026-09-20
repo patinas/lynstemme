@@ -15,10 +15,12 @@
     "@livekit/agents-plugin-openai": "1.9.0",
     "@livekit/agents-plugin-silero": "1.9.0",
     "@livekit/rtc-node": "0.13.35",
-    "dotenv": "^17.2.2"
+    "dotenv": "^17.2.2",
+    "mpg123-decoder": "^1.0.3"
   },
   "devDependencies": {
     "@types/node": "^22.20.3",
+    "@types/ws": "^8.18.1",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
